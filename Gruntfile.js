@@ -5,7 +5,7 @@ module.exports = function (grunt) {
 
     var debug = typeof grunt.option('release') === "undefined",
         cssRoot         = "css/",
-        staticRoot      = "static/",
+        staticRoot      = "dist/",
         bundleJs        = staticRoot + "js/parcel.js",
         bundleJsMin     = staticRoot + "js/parcel.min.js",
         appSass         = cssRoot + "sass/styles.scss",
@@ -50,7 +50,7 @@ module.exports = function (grunt) {
 
         jshint: {
             options: {
-                jshintrc: '../.jshintrc'
+                jshintrc: '.jshintrc'
             },
             parcel: ['Gruntfile.js', 'src/*.js']
         },
