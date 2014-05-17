@@ -1,13 +1,15 @@
 "use strict"
 
 var L = require('leaflet'),
-    esri = require('esriLeaflet');
+    esri = require('esriLeaflet'),
+    $ = require('jquery'),
+    Bacon = require('baconjs');
 
 var ParcelMap = function() {
     this.map = this._loadMap();
 };
 
-ParcelMap.prototype.identify = function(latLng, callback) {
+ParcelMap.prototype.identify = function(latLng) {
     var pwdParcelUrl = "http://gis.phila.gov/arcgis/rest/services/Water/pv_data/MapServer/identify",
         parcelLayerId = 0,
         query = {
@@ -25,8 +27,7 @@ ParcelMap.prototype.identify = function(latLng, callback) {
                 }
             })
         };
-
-    L.esri.get(pwdParcelUrl, query, callback);
+    return Bacon.fromPromise($.getJSON(pwdParcelUrl, query));
 };
 
 ParcelMap.prototype._loadMap = function() {
@@ -38,12 +39,27 @@ ParcelMap.prototype._loadMap = function() {
             { 
                 continuousWorld: true,
                 maxZoom: 19
-            }).addTo(map);
+            }).addTo(map),
+        mapClickStream = new Bacon.Bus(),
+        mapChangeStream = new Bacon.Bus(),
+        mapProp = mapChangeStream.toProperty({});
 
-    map.on('click', function(e) {
-        self.identify(e.latlng, self._showPopup);
-    });
+
+    map.on('moveend zoomend', mapChangeStream.push);
+    // TODO: map bounds/size on change to prop.  Merge with clickstream, sample prop.
+    mapChangeStream.map(
+
+    // Identify
+    map.on('click', mapClickStream.push);
+    mapClickStream.map('.latlng').log().flatMapLatest(self.identify).onValue(self._showPopup);
+
+   
+
     return map;
+};
+
+ParcelMap.prototype.zoomTo = function(latlng) {
+
 };
 
 ParcelMap.prototype._showPopup = function(parcel) {
