@@ -2,26 +2,27 @@
 
 var L = require('leaflet'),
     esri = require('esriLeaflet'),
-    $ = require('jquery'),
-    Bacon = require('baconjs');
+    Bacon = require('baconjs'),
+    $ = require('jquery');
 
-var ParcelMap = function() {
-    this.map = this._loadMap();
+var ParcelMap = function(options) {
+    setupMap(options);
 };
 
-ParcelMap.prototype.identify = function(latLng) {
+function identify(idInfo) {
     var pwdParcelUrl = "http://gis.phila.gov/arcgis/rest/services/Water/pv_data/MapServer/identify",
         parcelLayerId = 0,
         query = {
+            f: 'json',
             sr: '4326',
-            mapExtent: JSON.stringify(L.esri.Util.boundsToExtent(this.map.getBounds())),
+            mapExtent: JSON.stringify(idInfo.map.extent),
             layers: parcelLayerId,
             tolerance: 5,
             geometryType: 'esriGeometryPoint',
-            imageDisplay: this.map._size.x + ',' + this.map._size.y + ',96',
+            imageDisplay: idInfo.map.size.x + ',' + idInfo.map.size.y + ',96',
             geometry: JSON.stringify({
-                x: latLng.lng,
-                y: latLng.lat,
+                x: idInfo.latLng.lng,
+                y: idInfo.latLng.lat,
                 spatialReference: {
                     wkid: 4326
                 }
@@ -30,40 +31,60 @@ ParcelMap.prototype.identify = function(latLng) {
     return Bacon.fromPromise($.getJSON(pwdParcelUrl, query));
 };
 
-ParcelMap.prototype._loadMap = function() {
-    var self = this,
-        map = L.map('map').setView([39.9523768,-75.1634726], 18),
-
-        basemap = "http://gis.phila.gov/arcgis/rest/services/BaseMaps/Hybrid_WM/MapServer",
-        baseLayer = L.esri.tiledMapLayer(basemap, 
-            { 
-                continuousWorld: true,
-                maxZoom: 19
-            }).addTo(map),
+function setupMap(options) {
+    var map = L.map('map').setView([39.9523768,-75.1634726], 18),
+        basemap = makeBasemap(),
         mapClickStream = new Bacon.Bus(),
-        mapChangeStream = new Bacon.Bus(),
-        mapProp = mapChangeStream.toProperty({});
+        mapChangeStream = new Bacon.Bus();
 
+    basemap.addTo(map);
 
+    // Track map state needed for doing an identify
     map.on('moveend zoomend', mapChangeStream.push);
-    // TODO: map bounds/size on change to prop.  Merge with clickstream, sample prop.
-    mapChangeStream.map(
+    var mapProp = mapChangeStream.map('.target')
+        .map(mapToIdInfo)
+        .toProperty(mapToIdInfo(map));
 
     // Identify
     map.on('click', mapClickStream.push);
-    mapClickStream.map('.latlng').log().flatMapLatest(self.identify).onValue(self._showPopup);
-
-   
+    var clickProp = mapClickStream.map('.latlng'),
+        popup = showPopup(map, options.popupTmpl);
+    
+    var id = Bacon.combineTemplate({
+            latLng: clickProp,
+            map: mapProp
+    });
+    
+    var i = id.sampledBy(mapClickStream).log().flatMapLatest(identify)
+    
+    Bacon.combineAsArray(id,i).log("combined").skipDuplicates().log().onValue(popup);
 
     return map;
 };
 
-ParcelMap.prototype.zoomTo = function(latlng) {
-
+function mapToIdInfo(map) {
+    return {
+        size: map._size,
+        extent: L.esri.Util.boundsToExtent(map.getBounds())
+    };
 };
 
-ParcelMap.prototype._showPopup = function(parcel) {
-    console.log(parcel);
+function makeBasemap() {
+    var basemap = "http://gis.phila.gov/arcgis/rest/services/BaseMaps/Hybrid_WM/MapServer";
+    return L.esri.tiledMapLayer(basemap, 
+        { 
+            continuousWorld: true,
+            maxZoom: 19
+        });
+}
+
+function showPopup(map, tmpl) {
+    return function(identifyResult) {
+        var latLng = identifyResult[0].latLng,
+            parcel = identifyResult[1].results[0].attributes;
+
+        map.openPopup(tmpl(parcel), latLng);
+    }; 
 };
 
 module.exports = ParcelMap;
