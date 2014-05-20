@@ -57,6 +57,10 @@ function setupMap(options) {
         .flatMapLatest(identify)
         .flatMapLatest(toOpa)
         .onValue(popup);
+
+    options.searchStream
+        .flatMap(searchToIdResult)
+        .onValue(popup);
 };
 
 function mapToIdInfo(map) {
@@ -86,9 +90,22 @@ function toOpa(idResult) {
     });
 }
 
+function searchToIdResult(opaAccount) {
+    var geom = opaAccount.data.property.geometry;
+    return Bacon.combineTemplate({
+        latLng: L.latLng([geom.y, geom.x]),
+        opa: opaAccount
+    });
+}
+
 function showPopup(map, tmpl) {
     return function(opaIdResult) {
         var parcel = opaIdResult.opa.data.property;    
+
+        if (!map.getBounds().contains(L.latLng(opaIdResult.latLng))) {
+            map.panTo(opaIdResult.latLng);
+        }
+
         map.openPopup(tmpl(parcel), opaIdResult.latLng);
     }; 
 };
