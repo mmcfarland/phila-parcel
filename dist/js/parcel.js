@@ -66,8 +66,6 @@ module.exports = {
 
 },{"jquery":9,"lodash":11,"map":"UCN04v","search":"66mxlN"}],"app":[function(require,module,exports){
 module.exports=require('oQBl+F');
-},{}],"map":[function(require,module,exports){
-module.exports=require('UCN04v');
 },{}],"UCN04v":[function(require,module,exports){
 "use strict"
 
@@ -99,38 +97,35 @@ function identify(idInfo) {
                 }
             })
         };
-    return Bacon.fromPromise($.getJSON(pwdParcelUrl, query));
+
+    return Bacon.combineTemplate({
+            latLng: Bacon.constant(idInfo.latLng), 
+            pwdParcel: Bacon.fromPromise($.getJSON(pwdParcelUrl, query))
+    });
 };
 
 function setupMap(options) {
-    var map = L.map('map').setView([39.9523768,-75.1634726], 18),
-        basemap = makeBasemap(),
+    var map = L.map('map')
+            .setView([39.9523768,-75.1634726], 18)
+            .addLayer(makeBasemap()),
+        popup = showPopup(map, options.popupTmpl),
         mapClickStream = new Bacon.Bus(),
-        mapChangeStream = new Bacon.Bus();
-
-    basemap.addTo(map);
+        mapChangeStream = new Bacon.Bus(),
+        mapProp = mapChangeStream.map('.target')
+            .map(mapToIdInfo)
+            .toProperty(mapToIdInfo(map)),
+        clickProp = mapClickStream.map('.latlng')
+            .toProperty();
 
     // Track map state needed for doing an identify
     map.on('moveend zoomend', mapChangeStream.push);
-    var mapProp = mapChangeStream.map('.target')
-        .map(mapToIdInfo)
-        .toProperty(mapToIdInfo(map));
-
-    // Identify
     map.on('click', mapClickStream.push);
-    var clickProp = mapClickStream.map('.latlng'),
-        popup = showPopup(map, options.popupTmpl);
-    
-    var id = Bacon.combineTemplate({
-            latLng: clickProp,
-            map: mapProp
-    });
-    
-    var i = id.sampledBy(mapClickStream).log().flatMapLatest(identify)
-    
-    Bacon.combineAsArray(id,i).log("combined").skipDuplicates().log().onValue(popup);
 
-    return map;
+    Bacon.combineTemplate({ latLng: clickProp, map: mapProp })
+        .sampledBy(mapClickStream)
+        .flatMapLatest(identify)
+        .flatMapLatest(toOpa)
+        .onValue(popup);
 };
 
 function mapToIdInfo(map) {
@@ -149,18 +144,29 @@ function makeBasemap() {
         });
 }
 
-function showPopup(map, tmpl) {
-    return function(identifyResult) {
-        var latLng = identifyResult[0].latLng,
-            parcel = identifyResult[1].results[0].attributes;
+function toOpa(idResult) {
+    var opa = 'http://api.phila.gov/opa/v1.0/account/',
+        parcel = idResult.pwdParcel.results[0].attributes,
+        query = {format: 'json'};
 
-        map.openPopup(tmpl(parcel), latLng);
+    return Bacon.combineTemplate({
+        latLng: idResult.latLng,
+        opa: Bacon.fromPromise($.getJSON(opa + parcel.BRT_ID, query))
+    });
+}
+
+function showPopup(map, tmpl) {
+    return function(opaIdResult) {
+        var parcel = opaIdResult.opa.data.property;    
+        map.openPopup(tmpl(parcel), opaIdResult.latLng);
     }; 
 };
 
 module.exports = ParcelMap;
 
-},{"baconjs":8,"esriLeaflet":1,"jquery":9,"leaflet":10}],"66mxlN":[function(require,module,exports){
+},{"baconjs":8,"esriLeaflet":1,"jquery":9,"leaflet":10}],"map":[function(require,module,exports){
+module.exports=require('UCN04v');
+},{}],"66mxlN":[function(require,module,exports){
 "use strict";
 
 var $ = require('jquery'),
