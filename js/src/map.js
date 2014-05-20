@@ -30,7 +30,7 @@ function identify(idInfo) {
         };
 
     return Bacon.combineTemplate({
-            latLng:Bacon.constant(idInfo.latLng), 
+            latLng: Bacon.constant(idInfo.latLng), 
             pwdParcel: Bacon.fromPromise($.getJSON(pwdParcelUrl, query))
     });
 };
@@ -55,6 +55,7 @@ function setupMap(options) {
     Bacon.combineTemplate({ latLng: clickProp, map: mapProp })
         .sampledBy(mapClickStream)
         .flatMapLatest(identify)
+        .flatMapLatest(toOpa)
         .onValue(popup);
 };
 
@@ -74,10 +75,21 @@ function makeBasemap() {
         });
 }
 
+function toOpa(idResult) {
+    var opa = 'http://api.phila.gov/opa/v1.0/account/',
+        parcel = idResult.pwdParcel.results[0].attributes,
+        query = {format: 'json'};
+
+    return Bacon.combineTemplate({
+        latLng: idResult.latLng,
+        opa: Bacon.fromPromise($.getJSON(opa + parcel.BRT_ID, query))
+    });
+}
+
 function showPopup(map, tmpl) {
-    return function(idResult) {
-        var parcel = idResult.pwdParcel.results[0].attributes;
-        map.openPopup(tmpl(parcel), idResult.latLng);
+    return function(opaIdResult) {
+        var parcel = opaIdResult.opa.data.property;    
+        map.openPopup(tmpl(parcel), opaIdResult.latLng);
     }; 
 };
 
