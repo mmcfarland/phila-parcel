@@ -43,7 +43,7 @@ function setupSearchStream(options) {
         searchStream = textStream.merge(buttonStream),
         addressStream = queryProp.sampledBy(searchStream).flatMapLatest(getUlrs);
 
-    return addressStream.map(toPropCode).flatMapLatest(getOpa)
+    return addressStream.map(toPropCode).flatMapLatest(getOpa);
 }
 
 module.exports = {

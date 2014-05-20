@@ -7,12 +7,11 @@ var $ = require('jquery'),
 
 function init(options) {
     var templates = complileTemplates(),
-        map = ParcelMap({popupTmpl: templates['id-popup']}),
-        searchStream = search.setup(options.search);
-
-    searchStream.onValue(function(opa) {
-        console.log(opa);
-    });
+        searchStream = search.setup(options.search),
+        map = ParcelMap({
+            searchStream: searchStream,
+            popupTmpl: templates['id-popup']
+        });
 }
 
 function complileTemplates() {
