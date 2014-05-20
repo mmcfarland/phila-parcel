@@ -33,7 +33,9 @@ L.esri.DynamicMapLayer=L.Class.extend({includes:L.esri.Mixins.identifiableLayer,
 }).call(global, module, undefined, undefined);
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"leaflet":10}],"oQBl+F":[function(require,module,exports){
+},{"leaflet":10}],"app":[function(require,module,exports){
+module.exports=require('oQBl+F');
+},{}],"oQBl+F":[function(require,module,exports){
 "use strict"
 
 var $ = require('jquery'),
@@ -43,12 +45,11 @@ var $ = require('jquery'),
 
 function init(options) {
     var templates = complileTemplates(),
-        map = ParcelMap({popupTmpl: templates['id-popup']}),
-        searchStream = search.setup(options.search);
-
-    searchStream.onValue(function(opa) {
-        console.log(opa);
-    });
+        searchStream = search.setup(options.search),
+        map = ParcelMap({
+            searchStream: searchStream,
+            popupTmpl: templates['id-popup']
+        });
 }
 
 function complileTemplates() {
@@ -64,8 +65,8 @@ module.exports = {
     init: init
 }
 
-},{"jquery":9,"lodash":11,"map":"UCN04v","search":"66mxlN"}],"app":[function(require,module,exports){
-module.exports=require('oQBl+F');
+},{"jquery":9,"lodash":11,"map":"UCN04v","search":"66mxlN"}],"map":[function(require,module,exports){
+module.exports=require('UCN04v');
 },{}],"UCN04v":[function(require,module,exports){
 "use strict"
 
@@ -126,6 +127,10 @@ function setupMap(options) {
         .flatMapLatest(identify)
         .flatMapLatest(toOpa)
         .onValue(popup);
+
+    options.searchStream
+        .flatMap(searchToIdResult)
+        .onValue(popup);
 };
 
 function mapToIdInfo(map) {
@@ -155,17 +160,30 @@ function toOpa(idResult) {
     });
 }
 
+function searchToIdResult(opaAccount) {
+    var geom = opaAccount.data.property.geometry;
+    return Bacon.combineTemplate({
+        latLng: L.latLng([geom.y, geom.x]),
+        opa: opaAccount
+    });
+}
+
 function showPopup(map, tmpl) {
     return function(opaIdResult) {
         var parcel = opaIdResult.opa.data.property;    
+
+        if (!map.getBounds().contains(L.latLng(opaIdResult.latLng))) {
+            map.panTo(opaIdResult.latLng);
+        }
+
         map.openPopup(tmpl(parcel), opaIdResult.latLng);
     }; 
 };
 
 module.exports = ParcelMap;
 
-},{"baconjs":8,"esriLeaflet":1,"jquery":9,"leaflet":10}],"map":[function(require,module,exports){
-module.exports=require('UCN04v');
+},{"baconjs":8,"esriLeaflet":1,"jquery":9,"leaflet":10}],"search":[function(require,module,exports){
+module.exports=require('66mxlN');
 },{}],"66mxlN":[function(require,module,exports){
 "use strict";
 
@@ -212,7 +230,7 @@ function setupSearchStream(options) {
         searchStream = textStream.merge(buttonStream),
         addressStream = queryProp.sampledBy(searchStream).flatMapLatest(getUlrs);
 
-    return addressStream.map(toPropCode).flatMapLatest(getOpa)
+    return addressStream.map(toPropCode).flatMapLatest(getOpa);
 }
 
 module.exports = {
@@ -226,9 +244,7 @@ module.exports = {
     }
 };
 
-},{"baconjs":8,"jquery":9,"lodash":11}],"search":[function(require,module,exports){
-module.exports=require('66mxlN');
-},{}],8:[function(require,module,exports){
+},{"baconjs":8,"jquery":9,"lodash":11}],8:[function(require,module,exports){
 (function() {
   var Bacon, BufferingSource, Bus, CompositeUnsubscribe, ConsumingSource, Desc, Dispatcher, End, Error, Event, EventStream, Initial, Next, None, Observable, Property, PropertyDispatcher, Some, Source, UpdateBarrier, addPropertyInitValueToStream, assert, assertArray, assertEventStream, assertFunction, assertNoArguments, assertString, cloneArray, compositeUnsubscribe, containsDuplicateDeps, convertArgsToFunction, describe, end, eventIdCounter, flatMap_, former, idCounter, initial, isArray, isFieldKey, isFunction, isObservable, latterF, liftCallback, makeFunction, makeFunctionArgs, makeFunction_, makeObservable, makeSpawner, next, nop, partiallyApplied, recursionDepth, registerObs, spys, toCombinator, toEvent, toFieldExtractor, toFieldKey, toOption, toSimpleExtractor, withDescription, withMethodCallSupport, _, _ref,
     __slice = [].slice,
