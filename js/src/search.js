@@ -39,7 +39,7 @@ function setupSearchStream(options) {
     var $search = $(options.searchInput),
         queryProp = $search.asEventStream('keyup').map('.target.value').toProperty(''),
         textStream = $search.asEventStream('keypress').filter(isEnterKey),
-        buttonStream = $(options.searchBtn).asEventStream('click'), 
+        buttonStream = $(options.searchButton).asEventStream('click'), 
         searchStream = textStream.merge(buttonStream),
         addressStream = queryProp.sampledBy(searchStream).flatMapLatest(getUlrs);
 
@@ -50,7 +50,7 @@ module.exports = {
     setup: function(options) {
         var opts = _.extend({
             searchInput: '',
-            searchBtn: ''
+            searchButton: ''
         }, options);
 
         return setupSearchStream(opts);
