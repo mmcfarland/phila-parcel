@@ -44,6 +44,12 @@
 
     <div id="map"></div>
 
+    <div class="modal fade full-info" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">hi!</div>
+      </div>
+    </div>
+
     <script type="text/javascript" src="dist/js/parcel.js"></script>
     <script type="text/javascript">
 
@@ -62,6 +68,55 @@
 
     <script type="text/template" id="id-popup">
       <h4>${ full_address }</h4>
+      <div><%= ownership.owners.join(', ') %></h6>
+      <div>${ ownership.liaison }</div>
+      <a id="show-full" class="btn">Full Details</a>
+    </script>
+
+    <script type="text/template" id="id-popup-full">
+
+    <div class="tab-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title">${ full_address }</h4>
+      </div>
+
+      <ul class="nav nav-tabs">
+        <li class="active"><a href="#property">Property</a></li>
+        <li><a href="#valuation">Valuation</a></li>
+        <li><a href="#lni">L&I</a></li>
+      </ul>
+
+      <div class="tab-pane active" id="property">
+        <ul class="parcel-field-group">
+          <li>
+            <label>Ownership</label>
+            <div><%= ownership.owners.join(', ') %></div>
+            <div>${ ownership.liaison }</div>
+          </li>
+          <li>
+            <label>Owner Mailing Address</label>
+            <div>${ ownership.mailing_address.street }</div>
+            <div>${ ownership.mailing_address.city }, ${ ownership.mailing_address.state } ${ ownership.mailing_address.zip }</div>
+          </li>
+          <li>
+            <label>Improvement Area</label>
+            <div class="val">${ characteristics.improvement_area } ft<sup>2</sup></div>
+          </li>
+          <li>
+            <label>Land Area</label>
+            <div class="val">${ characteristics.land_area } <ft<sup>2</sup>/div>
+          </li>
+          <li>
+            <label>Exterior Condition</label>
+            <div class="val">${ characteristics.exterior_condition }</div>
+          </li>
+        </ul>
+      </div>
+      <div class="tab-pane" id="valuation">...</div>
+      <div class="tab-pane" id="lni">...</div>
+      <div class="tab-pane" id="settings">...</div>
+    </div>
     </script>
   </body>
 

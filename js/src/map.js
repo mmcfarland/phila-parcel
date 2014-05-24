@@ -3,10 +3,41 @@
 var L = require('leaflet'),
     esri = require('esriLeaflet'),
     Bacon = require('baconjs'),
-    $ = require('jquery');
+    $ = require('jquery'),
+    bootstrap = require('bootstrap');
 
-var ParcelMap = function(options) {
-    setupMap(options);
+function setupMap(options) {
+    var map = L.map('map')
+            .setView([39.9523768,-75.1634726], 18)
+            .addLayer(makeBasemap()),
+        popup = showPopup(map, options.popupTmpl),
+        fullInfo = getFullInfo(options.fullTmpl, options.fullTarget),
+        mapClickStream = new Bacon.Bus(),
+        mapChangeStream = new Bacon.Bus(),
+        mapProp = mapChangeStream.map('.target')
+            .map(mapToIdInfo)
+            .toProperty(mapToIdInfo(map)),
+        clickProp = mapClickStream.map('.latlng')
+            .toProperty();
+
+    // Track map state needed for doing an identify
+    map.on('moveend zoomend', mapChangeStream.push);
+    map.on('click', mapClickStream.push);
+
+    var click = Bacon.combineTemplate({ latLng: clickProp, map: mapProp })
+            .sampledBy(mapClickStream)
+            .flatMapLatest(identify)
+            .flatMapLatest(toOpa),
+
+        search = options.searchStream
+            .flatMap(searchToIdResult),
+
+        property = click.merge(search).doAction(popup).toProperty(),
+        fullDetails = $('#map').asEventStream('click', '#show-full');
+
+    property.sampledBy(fullDetails)
+        .map('.opa.data.property').log()
+        .onValue(fullInfo);
 };
 
 function identify(idInfo) {
@@ -35,33 +66,12 @@ function identify(idInfo) {
     });
 };
 
-function setupMap(options) {
-    var map = L.map('map')
-            .setView([39.9523768,-75.1634726], 18)
-            .addLayer(makeBasemap()),
-        popup = showPopup(map, options.popupTmpl),
-        mapClickStream = new Bacon.Bus(),
-        mapChangeStream = new Bacon.Bus(),
-        mapProp = mapChangeStream.map('.target')
-            .map(mapToIdInfo)
-            .toProperty(mapToIdInfo(map)),
-        clickProp = mapClickStream.map('.latlng')
-            .toProperty();
-
-    // Track map state needed for doing an identify
-    map.on('moveend zoomend', mapChangeStream.push);
-    map.on('click', mapClickStream.push);
-
-    Bacon.combineTemplate({ latLng: clickProp, map: mapProp })
-        .sampledBy(mapClickStream)
-        .flatMapLatest(identify)
-        .flatMapLatest(toOpa)
-        .onValue(popup);
-
-    options.searchStream
-        .flatMap(searchToIdResult)
-        .onValue(popup);
-};
+function getFullInfo(tmpl, $target) {
+    return function(opa) {
+        var text = tmpl(opa);
+        $target.find('.modal-content').html(text).end().modal();
+    };
+}
 
 function mapToIdInfo(map) {
     return {
@@ -110,4 +120,4 @@ function showPopup(map, tmpl) {
     }; 
 };
 
-module.exports = ParcelMap;
+module.exports = setupMap;

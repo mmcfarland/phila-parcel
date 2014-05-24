@@ -10,7 +10,9 @@ function init(options) {
         searchStream = search.setup(options.search),
         map = ParcelMap({
             searchStream: searchStream,
-            popupTmpl: templates['id-popup']
+            popupTmpl: templates['id-popup'],
+            fullTmpl: templates['id-popup-full'],
+            fullTarget: $('.full-info')
         });
 }
 
